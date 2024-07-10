@@ -13,6 +13,7 @@
 #include <sys/mman.h>
 
 #include "lc3.h"
+#include "truth_tables.c"
 
 /* Memory storage */
 uint16_t memory[MEMORY_MAX];  /* 65,536 locations */
@@ -135,6 +136,10 @@ uint16_t mem_read(uint16_t address) {
 
 /* Opcode implementations
  *   `instr` is the rightmost 12 bits of instruction */
+// Some things that need to get parsed often
+//uint16_t r0; // bits [11:9]
+//uint16_t r1; // bits [8:6]
+uint16_t imm_flag; // bit [5]
 
 void op_add(uint16_t instr) {
   /* ADD: Add together two values.
@@ -145,8 +150,6 @@ void op_add(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
   // first operand (SR1): bits [8:6]
   uint16_t r1 = (instr >> 6) & 0x7;
-  // whether we are in immediate mode: bit 5
-  uint16_t imm_flag = (instr >> 5) & 0x1;
 
   if (imm_flag) {
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
@@ -169,8 +172,6 @@ void op_and(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
   // first operand (SR1): bits [8:6]
   uint16_t r1 = (instr >> 6) & 0x7;
-  // whether we are in immediate mode: bit 5
-  uint16_t imm_flag = (instr >> 5) & 0x1;
 
   if (imm_flag) {
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
@@ -397,9 +398,10 @@ int main (int argc, const char* argv[]) {
 
   int running = 1;
   while (running) {
-    /* Fetch */
+    /* Fetch/parse */
     uint16_t instr = mem_read(reg[R_PC]++);
     uint16_t op = instr >> 12;  /* read opcode from the leftmost 4 bits */
+    if (check_mode(op)) imm_flag = (instr >> 5) & 0x1;
 
     switch (op) {
       case OP_ADD:
