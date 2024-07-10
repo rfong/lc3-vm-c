@@ -45,3 +45,21 @@ C code to an executable.
 
 You can use `make compile` as shorthand. To see what it does, read `Makefile`.
 
+# Assembly instruction usage
+
+Instruction | Outcome
+--- | ---
+ADD R0 R1 R2 | R0 = R1 + R2
+ADD R0 R1 #  | R0 = R1 + #, where # < 2^5
+AND R0 R1 R2 | R0 = R1 & R2
+AND R0 R1 #  | R0 = R1 & #, where # < 2^5
+NOT R0 R1    | R0 = ^R1
+BRn LABEL    | Jump if result is -
+BRz LABEL    | Jump if result == 0
+BRp LABEL    | Jump if result is +
+BRzp LABEL   | Jump if result is 0 OR + 
+BRnp LABEL   | Jump if result is - OR +
+BRnz LABEL   | Jump if result is - OR 0
+BRnzp LABEL  | Jump if result is - || 0 || +
+JMP R0       | Jump to addr in reg (may use R0-R6)
+RET          | Return to addr in R7

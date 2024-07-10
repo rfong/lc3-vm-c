@@ -147,54 +147,6 @@ void set_reg(uint16_t reg_id, uint16_t val) {
   update_flags(reg_id);
 }
 
-void op_add(uint16_t instr) {
-  /* ADD: Add together two values.
-   * normal mode: ADD R2 R0 R1 ; R2 = R0 + R1
-   * imm mode: ADD R0 R0 offset5 ; R0 += offset5
-  */
-  set_reg(r0, imm_flag ?
-    // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
-    reg[r1] + sign_extend(instr & 0x1F, 5) :
-    // If not in imm mode, get second operand (SR2): bits [2:0]
-    reg[r1] + reg[instr & 0x7]
-  );
-}
-
-void op_and(uint16_t instr) {
-  /* AND: bitwise-and together two values.
-   * normal mode: AND R2 R0 R1 ; R2 = R0 & R1
-   * imm mode: AND R0 R0 val(0-31) ; R0 &= val
-  */
-  set_reg(r0, imm_flag ?
-    // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
-    reg[r1] & sign_extend(instr & 0x1F, 5) :
-    // If not in imm mode, get second operand (SR2): bits [2:0]
-    reg[r1] & reg[instr & 0x7]
-  );
-}
-
-void op_br(uint16_t instr) {
-  /* BR: conditional branch if condition is met
-   * BRn = jump if result is negative
-   * BRz = jump if result == 0
-   * BRp = jump if result is positive
-   * BRzp = jump if result is zero OR positive
-   * ... and so on with BRnp, BRnz, BRnzp
-   */
-  if (r0 & reg[R_COND]) {  // mask value flags with instruction flags
-    set_reg(R_PC,
-            reg[R_PC] + sign_extend(instr & 0x1FF, 9));  // PC += offset9
-  }
-}
-
-void op_jmp(uint16_t instr) {
-  set_reg(R_PC,
-    (r1 == 0x7) ?
-    reg[R_R7] : // RET
-    reg[r1]     // JMP to reg[8:6]
-  );
-}
-
 void op_jsr(uint16_t instr) {
   reg[R_R7] = reg[R_PC];  // Stash PC in R7.
   update_flags(R_R7);
@@ -230,17 +182,6 @@ void op_lea(uint16_t instr) {
   // LEA: load reg with address (PC + offset9)
   reg[r0] = reg[R_PC] + sign_extend(instr & 0x1FF, 9);
   update_flags(r0);
-}
-
-void op_not(uint16_t instr) {
-  // NOT: load reg0 with bitwise NOT of value at reg1
-  reg[r0] = ~reg[r1];
-  update_flags(r0);
-}
-
-void op_rti(uint16_t instr) {
-  printf("op_rti is not implemented yet\n");
-  exit(1);
 }
 
 void op_st(uint16_t instr) {
@@ -358,21 +299,43 @@ int main (int argc, const char* argv[]) {
     if (check_r0(op))   r0 = (instr >> 9) & 0x7;       // bits[11:9]
 
     switch (op) {
+
       case OP_ADD:
-        op_add(instr);
+        set_reg(r0, imm_flag ?
+          // imm mode: R0 = R1 + offset5
+          reg[r1] + sign_extend(instr & 0x1F, 5) :
+          // normal mode: R0 = R1 + reg[2:0]
+          reg[r1] + reg[instr & 0x7]
+        );
         break;
+
       case OP_AND:
-        op_and(instr);
+        set_reg(r0, imm_flag ?
+          // imm mode: R0 = R1 & offset5
+          reg[r1] & sign_extend(instr & 0x1F, 5) :
+          // normal mode: R0 = R1 & reg[2:0]
+          reg[r1] & reg[instr & 0x7]
+        );
         break;
+
       case OP_NOT:
-        op_not(instr);
+        set_reg(r0, ~reg[r1]);
         break;
+
       case OP_BR:
-        op_br(instr);
+        if (r0 & reg[R_COND]) // instr flags ([11:9]) & most recent cond flags
+          set_reg(R_PC,
+            reg[R_PC] + sign_extend(instr & 0x1FF, 9));  // PC += offset9
         break;
+
       case OP_JMP:
-        op_jmp(instr);
+        set_reg(R_PC,
+          (r1 == 0x7) ?
+          reg[R_R7] : // RET
+          reg[r1]     // JMP to reg[8:6]
+        );
         break;
+
       case OP_JSR:
         op_jsr(instr);
         break;
