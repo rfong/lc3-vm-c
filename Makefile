@@ -11,3 +11,9 @@ run:
 	make assemble
 	@echo "Running rom ${rom}.asm..."
 	./lc3-vm ${rom}.obj
+
+truth:
+	@echo "Checking truth tables..."
+	gcc -o check_truth_tables check_truth_tables.c && \
+		chmod a+x check_truth_tables && \
+		./check_truth_tables
