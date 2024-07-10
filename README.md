@@ -1,4 +1,6 @@
-My C implementation of [jmeiners' LC-3 VM tutorial](https://www.jmeiners.com/lc3-vm/), 
+My LC-3 VM implementation in C, following [jmeiners' LC-3 VM tutorial](https://www.jmeiners.com/lc3-vm/).
+
+See also [lc3-vm-tutorial-c](https://github.com/rfong/lc3-vm-tutorial-c) for just the tutorial scaffolding with the opcodes left as an exercise for the reader.
 
 # About [LC-3 (Little Computer 3)](https://en.wikipedia.org/wiki/Little_Computer_3)
 
@@ -45,7 +47,7 @@ C code to an executable.
 
 You can use `make compile` as shorthand. To see what it does, read `Makefile`.
 
-# Assembly instruction usage
+# Assembly instruction quickref (incomplete)
 
 Instruction | Outcome
 --- | ---
@@ -65,3 +67,17 @@ JMP R0       | Jump to addr in reg (may use R0-R6)
 JSR LABEL    | Jump to label
 JSRR R0      | Jump to addr in R0
 RET          | Return to addr in R7
+
+# Misc utils
+
+## decimal -> binary
+
+Smol `python3` script to check what a decimal integer looks like in binary.
+
+Usage: `./binary.py <number>` 
+
+## truth table checker
+
+Double check the outputs for the boolean functions in `truth_tables.c`.
+
+Usage: `make truth`
