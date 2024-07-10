@@ -138,7 +138,7 @@ uint16_t mem_read(uint16_t address) {
  *   `instr` is the rightmost 12 bits of instruction */
 // Some things that need to get parsed often
 //uint16_t r0; // bits [11:9]
-//uint16_t r1; // bits [8:6]
+uint16_t r1; // bits [8:6]
 uint16_t imm_flag; // bit [5]
 
 void op_add(uint16_t instr) {
@@ -148,8 +148,6 @@ void op_add(uint16_t instr) {
   */
   // destination register (DR): bits [11:9]
   uint16_t r0 = (instr >> 9) & 0x7;
-  // first operand (SR1): bits [8:6]
-  uint16_t r1 = (instr >> 6) & 0x7;
 
   if (imm_flag) {
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
@@ -170,8 +168,6 @@ void op_and(uint16_t instr) {
   */
   // destination register (DR): bits [11:9]
   uint16_t r0 = (instr >> 9) & 0x7;
-  // first operand (SR1): bits [8:6]
-  uint16_t r1 = (instr >> 6) & 0x7;
 
   if (imm_flag) {
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
@@ -201,12 +197,12 @@ void op_br(uint16_t instr) {
 }
 
 void op_jmp(uint16_t instr) {
-  if (((instr >> 6) & 0x7) == 0x7) {
+  if (r1 == 0x7) {
     // RET
     reg[R_PC] = reg[R_R7];
   } else {
     // JMP: jump to reg [8:6]
-    reg[R_PC] = reg[((instr >> 6) & 0x7)];  // [8:6]
+    reg[R_PC] = reg[r1];
   }
   update_flags(R_PC);
 }
@@ -216,7 +212,7 @@ void op_jsr(uint16_t instr) {
   update_flags(R_R7);
   if (((instr >> 11) & 1) == 0) {  // If bit 11 == 0
     // JSR
-    reg[R_PC] = reg[(instr >> 6) & 0x7];  // [8:6]
+    reg[R_PC] = reg[r1];
   } else {
     // JSRR
     reg[R_PC] += sign_extend(instr & 0x7FF, 11);  // offset [10:0]
@@ -253,7 +249,6 @@ void op_ldr(uint16_t instr) {
    * Load contents of location SEXT([5:0]) + reg[8:6] into reg[11:9]
    */
   uint16_t r0 = (instr >> 9) & 0x7;
-  uint16_t r1 = (instr >> 6) & 0x7;
   uint16_t offset6 = sign_extend(instr & 0x3F, 6);
   reg[r0] = mem_read(reg[r1] + offset6);
   update_flags(r0);
@@ -274,8 +269,6 @@ void op_not(uint16_t instr) {
   /* NOT: bitwise-not a value. */
   // destination register (DR): bits 9-11
   uint16_t r0 = (instr >> 9) & 0x7;
-  // first operand (SR1): bits 6-8
-  uint16_t r1 = (instr >> 6) & 0x7;
   // Invert value at SR1 and store
   reg[r0] = ~reg[r1];
   update_flags(r0);
@@ -309,7 +302,6 @@ void op_str(uint16_t instr) {
    * Store contents of register [11:9] in a location SEXT([5:0]) + reg[8:6]
    */
   uint16_t r0 = (instr >> 9) & 0x7;
-  uint16_t r1 = (instr >> 6) & 0x7;
   uint16_t offset6 = sign_extend(instr & 0x3F, 6);
   mem_write(reg[r1] + offset6, reg[r0]);
 }
@@ -402,6 +394,7 @@ int main (int argc, const char* argv[]) {
     uint16_t instr = mem_read(reg[R_PC]++);
     uint16_t op = instr >> 12;  /* read opcode from the leftmost 4 bits */
     if (check_mode(op)) imm_flag = (instr >> 5) & 0x1;
+    if (check_r1(op))   r1 = (instr >> 6) & 0x7;
 
     switch (op) {
       case OP_ADD:
