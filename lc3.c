@@ -137,7 +137,7 @@ uint16_t mem_read(uint16_t address) {
 /* Opcode implementations
  *   `instr` is the rightmost 12 bits of instruction */
 // Some things that need to get parsed often
-//uint16_t r0; // bits [11:9]
+uint16_t r0; // bits [11:9]
 uint16_t r1; // bits [8:6]
 uint16_t imm_flag; // bit [5]
 
@@ -146,9 +146,6 @@ void op_add(uint16_t instr) {
    * normal mode: ADD R2 R0 R1 ; R2 = R0 + R1
    * imm mode: ADD R0 R0 val(0-31) ; R0 += val
   */
-  // destination register (DR): bits [11:9]
-  uint16_t r0 = (instr >> 9) & 0x7;
-
   if (imm_flag) {
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
     uint16_t imm5 = sign_extend(instr & 0x1F, 5);
@@ -166,9 +163,6 @@ void op_and(uint16_t instr) {
    * normal mode: AND R2 R0 R1 ; R2 = R0 & R1
    * imm mode: AND R0 R0 val(0-31) ; R0 &= val
   */
-  // destination register (DR): bits [11:9]
-  uint16_t r0 = (instr >> 9) & 0x7;
-
   if (imm_flag) {
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
     uint16_t imm5 = sign_extend(instr & 0x1F, 5);
@@ -189,8 +183,7 @@ void op_br(uint16_t instr) {
    * BRzp = jump if result is zero OR positive
    * ... and so on with BRnp, BRnz, BRnzp
    */
-  uint16_t cond = (instr >> 9) & 0x7;
-  if (cond & reg[R_COND]) {  // mask value flags with instruction flags
+  if (r0 & reg[R_COND]) {  // mask value flags with instruction flags
     reg[R_PC] += sign_extend(instr & 0x1FF, 9);  // bits[8:0]
     update_flags(R_PC);
   }
@@ -222,8 +215,6 @@ void op_jsr(uint16_t instr) {
 
 void op_ld(uint16_t instr) {
   /* LD: Load contents at location (PC + offset) */
-  // destination register (DR): bits [11:9]
-  uint16_t r0 = (instr >> 9) & 0x7;
   // Offset value: bits [8:0]
   uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
   // Load
@@ -235,8 +226,6 @@ void op_ldi(uint16_t instr) {
   /* LDI (load indirect): Load a value from a mem location into a register.
    * Offset value limited to 9 bits.
    */
-  // destination register (DR): bits 9-11
-  uint16_t r0 = (instr >> 9) & 0x7;
   // Offset value: bits 0-8
   uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
   // Add pc_offset + current PC, then look at that location for final addr.
@@ -248,7 +237,6 @@ void op_ldr(uint16_t instr) {
   /* LDR (Load base+offset)
    * Load contents of location SEXT([5:0]) + reg[8:6] into reg[11:9]
    */
-  uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t offset6 = sign_extend(instr & 0x3F, 6);
   reg[r0] = mem_read(reg[r1] + offset6);
   update_flags(r0);
@@ -256,8 +244,6 @@ void op_ldr(uint16_t instr) {
 
 void op_lea(uint16_t instr) {
   /* LEA: load effective address */
-  // destination register (DR): bits 9-11
-  uint16_t r0 = (instr >> 9) & 0x7;
   // Offset value: bits 0-8
   uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
   // Add offset to PC, load address into DR
@@ -267,8 +253,6 @@ void op_lea(uint16_t instr) {
 
 void op_not(uint16_t instr) {
   /* NOT: bitwise-not a value. */
-  // destination register (DR): bits 9-11
-  uint16_t r0 = (instr >> 9) & 0x7;
   // Invert value at SR1 and store
   reg[r0] = ~reg[r1];
   update_flags(r0);
@@ -283,7 +267,6 @@ void op_st(uint16_t instr) {
   /* ST (Store)
    * Store contents of reg[11:9] in location PC + SEXT([8:0])
    */
-  uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
   mem_write(reg[R_PC] + pc_offset, reg[r0]);
 }
@@ -292,7 +275,6 @@ void op_sti(uint16_t instr) {
   /* STI (Store Indirect)
    * Store contents of register [11:9] in a memory location at [8:0]
    */
-  uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
   mem_write(mem_read(reg[R_PC] + pc_offset), reg[r0]);
 }
@@ -301,7 +283,6 @@ void op_str(uint16_t instr) {
   /* STR (Store base+offset)
    * Store contents of register [11:9] in a location SEXT([5:0]) + reg[8:6]
    */
-  uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t offset6 = sign_extend(instr & 0x3F, 6);
   mem_write(reg[r1] + offset6, reg[r0]);
 }
@@ -395,6 +376,7 @@ int main (int argc, const char* argv[]) {
     uint16_t op = instr >> 12;  /* read opcode from the leftmost 4 bits */
     if (check_mode(op)) imm_flag = (instr >> 5) & 0x1;
     if (check_r1(op))   r1 = (instr >> 6) & 0x7;
+    if (check_r0(op))   r0 = (instr >> 9) & 0x7;
 
     switch (op) {
       case OP_ADD:
