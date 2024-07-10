@@ -142,19 +142,22 @@ uint16_t r0; // bits [11:9]
 uint16_t r1; // bits [8:6]
 uint16_t imm_flag; // bit [5]
 
+void set_reg(uint16_t reg_id, uint16_t val) {
+  reg[reg_id] = val;
+  update_flags(reg_id);
+}
+
 void op_add(uint16_t instr) {
   /* ADD: Add together two values.
    * normal mode: ADD R2 R0 R1 ; R2 = R0 + R1
-   * imm mode: ADD R0 R0 val(0-31) ; R0 += val
+   * imm mode: ADD R0 R0 offset5 ; R0 += offset5
   */
-  if (imm_flag) {
+  set_reg(r0, imm_flag ?
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
-    reg[r0] = reg[r1] + sign_extend(instr & 0x1F, 5);
-  } else {
+    reg[r1] + sign_extend(instr & 0x1F, 5) :
     // If not in imm mode, get second operand (SR2): bits [2:0]
-    reg[r0] = reg[r1] + reg[instr & 0x7];
-  }
-  update_flags(r0);
+    reg[r1] + reg[instr & 0x7]
+  );
 }
 
 void op_and(uint16_t instr) {
@@ -162,14 +165,12 @@ void op_and(uint16_t instr) {
    * normal mode: AND R2 R0 R1 ; R2 = R0 & R1
    * imm mode: AND R0 R0 val(0-31) ; R0 &= val
   */
-  if (imm_flag) {
+  set_reg(r0, imm_flag ?
     // If in imm mode, sign-extend the rightmost 5 bits as 2nd value.
-    reg[r0] = reg[r1] & sign_extend(instr & 0x1F, 5);
-  } else {
+    reg[r1] & sign_extend(instr & 0x1F, 5) :
     // If not in imm mode, get second operand (SR2): bits [2:0]
-    reg[r0] = reg[r1] & reg[instr & 0x7];
-  }
-  update_flags(r0);
+    reg[r1] & reg[instr & 0x7]
+  );
 }
 
 void op_br(uint16_t instr) {
@@ -181,20 +182,17 @@ void op_br(uint16_t instr) {
    * ... and so on with BRnp, BRnz, BRnzp
    */
   if (r0 & reg[R_COND]) {  // mask value flags with instruction flags
-    reg[R_PC] += sign_extend(instr & 0x1FF, 9);  // PC += offset9
-    update_flags(R_PC);
+    set_reg(R_PC,
+            reg[R_PC] + sign_extend(instr & 0x1FF, 9));  // PC += offset9
   }
 }
 
 void op_jmp(uint16_t instr) {
-  if (r1 == 0x7) {
-    // RET
-    reg[R_PC] = reg[R_R7];
-  } else {
-    // JMP: jump to reg [8:6]
-    reg[R_PC] = reg[r1];
-  }
-  update_flags(R_PC);
+  set_reg(R_PC,
+    (r1 == 0x7) ?
+    reg[R_R7] : // RET
+    reg[r1]     // JMP to reg[8:6]
+  );
 }
 
 void op_jsr(uint16_t instr) {
@@ -293,8 +291,7 @@ void op_trap_out() {
 
 void op_trap_getc() {
   /* TRAP GETC reads a single ASCII char from keyboard input into R0. */
-  reg[R_R0] = (uint16_t)getchar();
-  update_flags(R_R0);
+  set_reg(R_R0, (uint16_t)getchar());
 }
 
 void op_trap_in() {
