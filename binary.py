@@ -1,4 +1,8 @@
 #!/usr/bin/python3
+'''
+decimal number to binary number
+usage: `./binary.py <number>`
+'''
 import sys
 
 base = 2
@@ -9,7 +13,7 @@ if (len(sys.argv) < 2):
   exit()
 else:
   n = int(sys.argv[1])
-print("%d base%d" % (n, base))
+print("%d -> base%d" % (n, base))
 
 currPow = 1
 while (currPow < n/base):
