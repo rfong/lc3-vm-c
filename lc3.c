@@ -60,15 +60,12 @@ void handle_interrupt(int signal) {
   exit(-2);
 }
 
-/* Sign extend a `bit_count`-length signed num to a 16-bit signed num.
+/* Sign extend a `bit_count`-length signed num `x` to a 16-bit signed num.
  * https://en.wikipedia.org/wiki/Two%27s_complement
  */
 uint16_t sign_extend(uint16_t x, int bit_count) {
-  /* If negative (sign bit is 1), fill in the left bits with 1s.
-   * Otherwise just return the value.
-   */
-  if ((x >> (bit_count - 1)) & 1) {
-    x |= (0xFFFF << bit_count);
+  if ((x >> (bit_count - 1)) & 1) {  // If x<0 (sign bit is 1)
+    x |= (0xFFFF << bit_count);  // Fill in the left bits with 1s
   }
   return x;
 }
@@ -145,63 +142,6 @@ uint16_t imm_flag; // bit [5]
 void set_reg(uint16_t reg_id, uint16_t val) {
   reg[reg_id] = val;
   update_flags(reg_id);
-}
-
-void op_jsr(uint16_t instr) {
-  set_reg(R_R7, reg[R_PC]);  // Stash PC in R7.
-  set_reg(R_PC,
-    (((instr >> 11) & 1) == 0) ? // bit[11] == 0
-    reg[r1] : // JSRR
-    reg[R_PC] + sign_extend(instr & 0x7FF, 11) // JSR: PC += offset11
-  );
-}
-
-void op_ld(uint16_t instr) {
-  // LD: load reg with value at location (PC + offset9)
-  reg[r0] = mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9));
-  update_flags(r0);
-}
-
-void op_ldi(uint16_t instr) {
-  // LDI: load reg with value via pointer in location (PC + offset9)
-  reg[r0] = mem_read(mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9)));
-  update_flags(r0);
-}
-
-void op_ldr(uint16_t instr) {
-  // LDR: load reg with value at location (baseR + offset6)
-  reg[r0] = mem_read(reg[r1] + sign_extend(instr & 0x3F, 6));
-  update_flags(r0);
-}
-
-void op_lea(uint16_t instr) {
-  // LEA: load reg with address (PC + offset9)
-  reg[r0] = reg[R_PC] + sign_extend(instr & 0x1FF, 9);
-  update_flags(r0);
-}
-
-void op_st(uint16_t instr) {
-  // ST: Store value in reg at location (PC + offset9)
-  mem_write(
-    reg[R_PC] + sign_extend(instr & 0x1FF, 9),
-    reg[r0]
-  );
-}
-
-void op_sti(uint16_t instr) {
-  // STI: Store value in reg at pointer in location (PC + offset9)
-  mem_write(
-    mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9)),
-    reg[r0]
-  );
-}
-
-void op_str(uint16_t instr) {
-  // STR: Store value in reg at location (reg[8:6] + offset6)
-  mem_write(
-    reg[r1] + sign_extend(instr & 0x3F, 6),
-    reg[r0]
-  );
 }
 
 /* TRAP routines*/
@@ -290,6 +230,7 @@ int main (int argc, const char* argv[]) {
     /* Fetch/parse */
     uint16_t instr = mem_read(reg[R_PC]++);
     uint16_t op = instr >> 12;  /* read opcode from the leftmost 4 bits */
+    // TODO: profile if this is even faster than just assigning w/out checking
     if (check_mode(op)) imm_flag = (instr >> 5) & 0x1; // imm mode = bit[5]
     if (check_r1(op))   r1 = (instr >> 6) & 0x7;       // bits[8:6]
     if (check_r0(op))   r0 = (instr >> 9) & 0x7;       // bits[11:9]
@@ -333,30 +274,58 @@ int main (int argc, const char* argv[]) {
         break;
 
       case OP_JSR:
-        op_jsr(instr);
+        set_reg(R_R7, reg[R_PC]);  // Stash PC in R7.
+        set_reg(R_PC,
+          (((instr >> 11) & 1) == 0) ? // bit[11] == 0
+          reg[r1] : // JSRR
+          reg[R_PC] + sign_extend(instr & 0x7FF, 11) // JSR: PC += offset11
+        );
         break;
 
       case OP_LD:
-        op_ld(instr);
+        // LD: load reg with value at location (PC + offset9)
+        set_reg(r0, mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9)));
         break;
+
       case OP_LDI:
-        op_ldi(instr);
+        // LDI: load reg with value via pointer in location (PC + offset9)
+        set_reg(r0, mem_read(mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9))));
         break;
+
       case OP_LDR:
-        op_ldr(instr);
+        // LDR: load reg with value at location (baseR + offset6)
+        set_reg(r0, mem_read(reg[r1] + sign_extend(instr & 0x3F, 6)));
         break;
+
       case OP_LEA:
-        op_lea(instr);
+        // LEA: load reg with address (PC + offset9)
+        set_reg(r0, reg[R_PC] + sign_extend(instr & 0x1FF, 9));
         break;
+
       case OP_ST:
-        op_st(instr);
+        // ST: Store value in reg at location (PC + offset9)
+        mem_write(
+          reg[R_PC] + sign_extend(instr & 0x1FF, 9),
+          reg[r0]
+        );
         break;
+
       case OP_STI:
-        op_sti(instr);
+        // STI: Store value in reg at pointer in location (PC + offset9)
+        mem_write(
+          mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9)),
+          reg[r0]
+        );
         break;
+
       case OP_STR:
-        op_str(instr);
+        // STR: Store value in reg at location (reg[8:6] + offset6)
+        mem_write(
+          reg[r1] + sign_extend(instr & 0x3F, 6),
+          reg[r0]
+        );
         break;
+
       case OP_TRAP:
         reg[R_R7] = reg[R_PC];  // Stash PC in R7.
         switch (instr & 0xFF) {  // trap code is in bits [7:0]
