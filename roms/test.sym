@@ -1,0 +1,12 @@
+// Symbol table
+// Scope level 0:
+//	Symbol Name       Page Address
+//	----------------  ------------
+//	LOOP              3003
+//	DONE              3006
+//	PROMPTC           3009
+//	HELLO_STR         300D
+//	NEWLINE_STR       301E
+//	PROMPT_STR        3020
+//	DONE_STR          3034
+

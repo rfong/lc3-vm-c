@@ -1,0 +1,8 @@
+// Symbol table
+// Scope level 0:
+//	Symbol Name       Page Address
+//	----------------  ------------
+//	LOOP              3003
+//	HELLO_STR         3009
+//	LOOPING_STR       3012
+

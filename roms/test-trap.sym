@@ -1,0 +1,9 @@
+// Symbol table
+// Scope level 0:
+//	Symbol Name       Page Address
+//	----------------  ------------
+//	TRAP_PUTS         3001
+//	TRAP_GETC         3001
+//	TRAP_OUT          3001
+//	PROMPT_STR        3001
+
