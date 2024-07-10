@@ -181,7 +181,7 @@ void op_br(uint16_t instr) {
    * ... and so on with BRnp, BRnz, BRnzp
    */
   if (r0 & reg[R_COND]) {  // mask value flags with instruction flags
-    reg[R_PC] += sign_extend(instr & 0x1FF, 9);  // bits[8:0]
+    reg[R_PC] += sign_extend(instr & 0x1FF, 9);  // PC += offset9
     update_flags(R_PC);
   }
 }
@@ -205,42 +205,37 @@ void op_jsr(uint16_t instr) {
     reg[R_PC] = reg[r1];
   } else {
     // JSRR
-    reg[R_PC] += sign_extend(instr & 0x7FF, 11);  // offset [10:0]
+    reg[R_PC] += sign_extend(instr & 0x7FF, 11);  // PC += offset11
     update_flags(R_PC);
   }
 }
 
 void op_ld(uint16_t instr) {
-  // LD: Load contents at location (PC + offset[8:0])
+  // LD: load reg with value at location (PC + offset9)
   reg[r0] = mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9));
   update_flags(r0);
 }
 
 void op_ldi(uint16_t instr) {
-  // LDI (load indirect): Load value at offset[8:0] location into a register.
-  // Add pc_offset + current PC, then look at that location for final addr.
+  // LDI: load reg with value via pointer in location (PC + offset9)
   reg[r0] = mem_read(mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9)));
   update_flags(r0);
 }
 
 void op_ldr(uint16_t instr) {
-  /* LDR (Load base+offset)
-   * Load contents of location SEXT([5:0]) + reg[8:6] into reg[11:9]
-   */
+  // LDR: load reg with value at location (baseR + offset6)
   reg[r0] = mem_read(reg[r1] + sign_extend(instr & 0x3F, 6));
   update_flags(r0);
 }
 
 void op_lea(uint16_t instr) {
-  /* LEA: load effective address */
-  // Add offset9 to PC, load address into DR
+  // LEA: load reg with address (PC + offset9)
   reg[r0] = reg[R_PC] + sign_extend(instr & 0x1FF, 9);
   update_flags(r0);
 }
 
 void op_not(uint16_t instr) {
-  /* NOT: bitwise-not a value. */
-  // Invert value at SR1 and store
+  // NOT: load reg0 with bitwise NOT of value at reg1
   reg[r0] = ~reg[r1];
   update_flags(r0);
 }
@@ -251,9 +246,7 @@ void op_rti(uint16_t instr) {
 }
 
 void op_st(uint16_t instr) {
-  /* ST (Store)
-   * Store contents of reg[11:9] in location PC + SEXT([8:0])
-   */
+  // ST: Store value in reg at location (PC + offset9)
   mem_write(
     reg[R_PC] + sign_extend(instr & 0x1FF, 9),
     reg[r0]
@@ -261,9 +254,7 @@ void op_st(uint16_t instr) {
 }
 
 void op_sti(uint16_t instr) {
-  /* STI (Store Indirect)
-   * Store contents of register [11:9] in a memory location at [8:0]
-   */
+  // STI: Store value in reg at pointer in location (PC + offset9)
   mem_write(
     mem_read(reg[R_PC] + sign_extend(instr & 0x1FF, 9)),
     reg[r0]
@@ -271,9 +262,7 @@ void op_sti(uint16_t instr) {
 }
 
 void op_str(uint16_t instr) {
-  /* STR (Store base+offset)
-   * Store contents of register [11:9] in a location reg[8:6] + SEXT([5:0])
-   */
+  // STR: Store value in reg at location (reg[8:6] + offset6)
   mem_write(
     reg[r1] + sign_extend(instr & 0x3F, 6),
     reg[r0]
