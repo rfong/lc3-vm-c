@@ -148,16 +148,12 @@ void set_reg(uint16_t reg_id, uint16_t val) {
 }
 
 void op_jsr(uint16_t instr) {
-  reg[R_R7] = reg[R_PC];  // Stash PC in R7.
-  update_flags(R_R7);
-  if (((instr >> 11) & 1) == 0) {  // If bit 11 == 0
-    // JSR
-    reg[R_PC] = reg[r1];
-  } else {
-    // JSRR
-    reg[R_PC] += sign_extend(instr & 0x7FF, 11);  // PC += offset11
-    update_flags(R_PC);
-  }
+  set_reg(R_R7, reg[R_PC]);  // Stash PC in R7.
+  set_reg(R_PC,
+    (((instr >> 11) & 1) == 0) ? // bit[11] == 0
+    reg[r1] : // JSRR
+    reg[R_PC] + sign_extend(instr & 0x7FF, 11) // JSR: PC += offset11
+  );
 }
 
 void op_ld(uint16_t instr) {
@@ -339,6 +335,7 @@ int main (int argc, const char* argv[]) {
       case OP_JSR:
         op_jsr(instr);
         break;
+
       case OP_LD:
         op_ld(instr);
         break;

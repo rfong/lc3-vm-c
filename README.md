@@ -62,4 +62,6 @@ BRnp LABEL   | Jump if result is - OR +
 BRnz LABEL   | Jump if result is - OR 0
 BRnzp LABEL  | Jump if result is - || 0 || +
 JMP R0       | Jump to addr in reg (may use R0-R6)
+JSR LABEL    | Jump to label
+JSRR R0      | Jump to addr in R0
 RET          | Return to addr in R7
